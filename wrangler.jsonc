@@ -1,0 +1,18 @@
+{
+  "name": "vesz-deutsch",
+  "main": "worker.js",
+  "compatibility_date": "2026-08-01",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS"
+  },
+  "kv_namespaces": [
+    { "binding": "VESZ_KV", "id": "cba290ea05834a9d86c1265a108226a0" }
+  ],
+  "triggers": {
+    "crons": ["*/10 * * * *"]
+  },
+  "vars": {
+    "OPENROUTER_MODEL": "openai/gpt-4o-mini"
+  }
+}
