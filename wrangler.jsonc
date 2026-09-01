@@ -4,7 +4,14 @@
   "compatibility_date": "2026-08-01",
   "assets": {
     "directory": "./public",
-    "binding": "ASSETS"
+    "binding": "ASSETS",
+    "run_worker_first": true
+  },
+  "observability": {
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true
+    }
   },
   "kv_namespaces": [
     { "binding": "VESZ_KV", "id": "cba290ea05834a9d86c1265a108226a0" }
