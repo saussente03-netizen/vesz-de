@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VÉSZ · Deutsch</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0b0f1f">
+<link rel="icon" href="assets/images/favicon-32.png" sizes="32x32">
+<link rel="icon" href="assets/images/favicon-16.png" sizes="16x16">
+<link rel="apple-touch-icon" href="assets/images/apple-touch-icon.png">
+<link rel="stylesheet" href="css/fonts.css">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="app-header">
+  <h1>VÉSZ <span class="accent">· Deutsch</span></h1>
+  <button id="refresh-btn" class="icon-btn" aria-label="Aktualisieren">⟳</button>
+</header>
+
+<div id="county-filter-banner" class="filter-banner" hidden>
+  <span class="filter-text"></span>
+  <a href="index.html" class="filter-clear">✕ Filter entfernen</a>
+</div>
+
+<main>
+  <section id="active-section">
+    <h2 class="section-title">Aktive Ereignisse</h2>
+    <div id="active-list" class="event-list"></div>
+    <p id="active-empty" class="empty-state" hidden>Keine aktiven Ereignisse.</p>
+  </section>
+
+  <section id="archive-section">
+    <h2 class="section-title">Archiv</h2>
+    <div id="archive-list" class="event-list"></div>
+    <p id="archive-empty" class="empty-state" hidden>Keine archivierten Ereignisse.</p>
+  </section>
+
+  <p id="loading" class="loading-state">Lade Ereignisse…</p>
+</main>
+
+<nav class="bottom-nav">
+  <a href="index.html" class="nav-item active"><span class="nav-icon">📋</span>Ereignisse</a>
+  <a href="karte.html" class="nav-item"><span class="nav-icon">🗺️</span>Komitate</a>
+  <a href="einstellungen.html" class="nav-item"><span class="nav-icon">⚙️</span>Einstellungen</a>
+  <a href="info.html" class="nav-item"><span class="nav-icon">ℹ️</span>Info</a>
+</nav>
+
+<footer class="app-footer">
+  <p>Quelle: <a href="https://www.katasztrofavedelem.hu" target="_blank" rel="noopener">BM Országos Katasztrófavédelmi Főigazgatóság</a></p>
+  <p>Übersetzung: <a href="https://melovistastudio.com" target="_blank" rel="noopener" class="footer-brand"><img src="assets/images/melovista-logo.png" alt="Melovista Studio" class="footer-logo">Melovista Studio</a></p>
+  <p><a href="https://melovistastudio.com/impressum.html" target="_blank" rel="noopener">Impressum</a></p>
+</footer>
+
+<div id="detail-overlay" class="detail-overlay" hidden>
+  <div class="detail-card">
+    <button id="detail-close" class="icon-btn detail-close" aria-label="Schließen">✕</button>
+    <div id="detail-content"></div>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    });
+  }
+</script>
+</body>
+</html>
