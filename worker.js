@@ -3184,6 +3184,10 @@ export default {
       return handleEventsApi(env);
     }
 
+    if (url.pathname === "/api/feed-status") {
+      return handleFeedStatus(env);
+    }
+
     if (url.pathname === "/api/admin-stats") {
       return handleAdminStats(request, env);
     }
@@ -3428,11 +3432,34 @@ async function updateEvents(env) {
   const indexMap = new Map(existingIndex.map((entry) => [entry.id, entry]));
 
   // Nationalen Feed laden
+  // 🆕 16.10.: Schlägt der Abruf fehl (Fehlerseite, Sperre, kein RSS), dürfen die bisherigen
+  // Ereignisse NICHT als "beendet" ins Archiv wandern - sonst wirkt ein Aussetzer der Quelle wie
+  // "keine aktiven Ereignisse". Nur ein erfolgreich gelesener Feed (auch ein leerer) zählt.
   let nationalItems = [];
+  let feedOk = false;
+  let feedHttp = 0;
+  let feedError = "";
   try {
-    const res = await fetch(NATIONAL_RSS);
-    if (res.ok) nationalItems = parseRSS(await res.text());
+    const res = await fetch(NATIONAL_RSS, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; VESZ-Deutsch/1.0; +https://melovistastudio.com)",
+        "Accept": "application/rss+xml, application/xml, text/xml;q=0.9, */*;q=0.5"
+      }
+    });
+    feedHttp = res.status;
+    if (res.ok) {
+      const xml = await res.text();
+      if (/<rss[\s>]|<channel[\s>]/i.test(xml)) {
+        nationalItems = parseRSS(xml);
+        feedOk = true;
+      } else {
+        feedError = "Antwort ist kein RSS-Feed";
+      }
+    } else {
+      feedError = "HTTP " + res.status;
+    }
   } catch (e) {
+    feedError = String(e && e.message ? e.message : e);
     console.log("Fehler beim Laden des nationalen Feeds:", e);
   }
 
@@ -3468,9 +3495,17 @@ async function updateEvents(env) {
     });
   }
 
-  // Ereignisse, die nicht mehr im aktuellen Feed sind -> archivieren
-  for (const [id, entry] of indexMap) {
-    if (!currentIds.has(id)) entry.active = false;
+  // Ereignisse, die nicht mehr im aktuellen Feed sind -> archivieren (nur bei gelesenem Feed)
+  if (feedOk) {
+    for (const [id, entry] of indexMap) {
+      if (!currentIds.has(id)) entry.active = false;
+    }
+  }
+
+  // 🆕 16.10.: Kategorien bereits gespeicherter Ereignisse mit der verbesserten Erkennung neu bestimmen
+  // (aus dem ungarischen Originaltext, ohne Netzwerk) - korrigiert die alten "Feuer"-Fehleinstufungen.
+  for (const entry of indexMap.values()) {
+    if (entry.title_hu) entry.category = categorize(entry.title_hu, entry.description_hu);
   }
 
   const newIndex = Array.from(indexMap.values())
@@ -3478,6 +3513,25 @@ async function updateEvents(env) {
     .slice(0, MAX_ITEMS);
 
   await env.VESZ_KV.put("index", JSON.stringify(newIndex));
+
+  // Zustand des Feed-Abrufs zum Nachschauen unter /api/feed-status (keine geheimen Daten)
+  const previous = (await env.VESZ_KV.get("feed_status", { type: "json" })) || {};
+  const nowIso = new Date().toISOString();
+  await env.VESZ_KV.put("feed_status", JSON.stringify({
+    lastRun: nowIso,
+    ok: feedOk,
+    httpStatus: feedHttp,
+    error: feedError || null,
+    itemsInFeed: nationalItems.length,
+    lastOk: feedOk ? nowIso : (previous.lastOk || null)
+  }));
+}
+
+async function handleFeedStatus(env) {
+  const status = (await env.VESZ_KV.get("feed_status", { type: "json" })) || { lastRun: null };
+  return new Response(JSON.stringify(status), {
+    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }
+  });
 }
 
 // ------------------------------------------------------------
@@ -3606,11 +3660,22 @@ async function translateEvent(titleHu, descriptionHu, env) {
 // Kategorisierung (Typ des Ereignisses anhand des Textes)
 // ------------------------------------------------------------
 function categorize(title, description) {
-  const text = `${title} ${description}`.toLowerCase();
+  // 🆕 16.10. (Bugfix): Vorher löste schon das Wort "tűz" Feuer aus - und das steckt auch in
+  // "tűzoltó/tűzoltóság" (Feuerwehr), das in fast jeder Meldung vorkommt. Dadurch war praktisch
+  // alles "Feuer". Jetzt: Feuerwehr-Wörter zählen nicht, und der TITEL entscheidet zuerst; nur wenn
+  // er nichts Eindeutiges enthält, wird die Beschreibung ausgewertet.
+  const FEUER = /(tűz(?!olt|szerész)|égett|égés|lángol|láng(?:ok|ra)|kigyulladt|kigyullad|gyulladt|(?<!\p{L})ég(?!\p{L})|füst)/u;
+  const UNFALL = /(baleset|karambol|ütköz|gázol|elgázol|elütött|elsodort|árok|felborult|megborult|oldalára borult|lesodródott|kisodródott|letért az útról|vonat|kerékpáros|motoros)/u;
+  const WETTER = /(riasztás|meteorológ|hőség|vihar|zivatar|orkán|széllökés|árvíz|jégeső|hóhelyzet|havazás|figyelmeztetés)/u;
+  const FAHRZEUG = /(gépkocsi|autó|kamion|teherautó|busz|jármű)/u;
 
-  if (/(tűz|égett|égés|lángol|kigyulladt|gyulladt)/.test(text)) return "feuer";
-  if (/(baleset|karambol|ütközött|gázolás|árokba|felborult|borult)/.test(text)) return "unfall";
-  if (/(riasztás|meteorológ|hőség|vihar|árvíz|jégeső|hóhelyzet)/.test(text)) return "wetter";
+  for (const part of [String(title || "").toLowerCase(), String(description || "").toLowerCase()]) {
+    if (FEUER.test(part)) return "feuer";
+    if (UNFALL.test(part)) return "unfall";
+    if (WETTER.test(part)) return "wetter";
+  }
+  const all = `${title} ${description}`.toLowerCase();
+  if (FAHRZEUG.test(all)) return "unfall";
   return "sonstiges";
 }
 
