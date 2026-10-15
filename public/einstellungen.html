@@ -2,79 +2,99 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Einstellungen · VÉSZ</title>
-<link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0b0f1f">
-<link rel="icon" href="assets/images/favicon-32.png" sizes="32x32">
-<link rel="icon" href="assets/images/favicon-16.png" sizes="16x16">
-<link rel="apple-touch-icon" href="assets/images/apple-touch-icon.png">
-<link rel="stylesheet" href="css/fonts.css">
-<link rel="stylesheet" href="css/style.css">
+<meta name="color-scheme" content="dark">
+<meta name="application-name" content="VÉSZ">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="VÉSZ">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/assets/icons/favicon-16.png">
+<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+<link rel="stylesheet" href="/css/fonts.css">
+<link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-
 <header class="app-header">
-  <h1>Einstellungen</h1>
+  <div class="brand">
+    <h1>Einstellungen</h1>
+  </div>
 </header>
 
 <main>
-  <section class="settings-section">
+  <section class="narrow">
     <h2 class="section-title">Kategorien anzeigen</h2>
     <div class="settings-list">
-      <div class="settings-row">
+      <label class="settings-row">
         <span class="settings-label"><span class="settings-icon" aria-hidden="true">🚗</span> Verkehrsunfall</span>
-        <label class="toggle">
+        <span class="toggle">
           <input type="checkbox" data-category="unfall" checked>
           <span class="toggle-slider"></span>
-        </label>
-      </div>
-      <div class="settings-row">
+        </span>
+      </label>
+      <label class="settings-row">
         <span class="settings-label"><span class="settings-icon" aria-hidden="true">🔥</span> Feuer</span>
-        <label class="toggle">
+        <span class="toggle">
           <input type="checkbox" data-category="feuer" checked>
           <span class="toggle-slider"></span>
-        </label>
-      </div>
-      <div class="settings-row">
+        </span>
+      </label>
+      <label class="settings-row">
         <span class="settings-label"><span class="settings-icon" aria-hidden="true">🌩️</span> Wetterwarnung</span>
-        <label class="toggle">
+        <span class="toggle">
           <input type="checkbox" data-category="wetter" checked>
           <span class="toggle-slider"></span>
-        </label>
-      </div>
-      <div class="settings-row">
+        </span>
+      </label>
+      <label class="settings-row">
         <span class="settings-label"><span class="settings-icon" aria-hidden="true">⚠️</span> Sonstiges</span>
-        <label class="toggle">
+        <span class="toggle">
           <input type="checkbox" data-category="sonstiges" checked>
           <span class="toggle-slider"></span>
-        </label>
-      </div>
+        </span>
+      </label>
     </div>
     <p class="settings-hint">Deaktivierte Kategorien werden in der Ereignisliste ausgeblendet. Die Auswahl wird nur auf diesem Gerät gespeichert.</p>
+
+    <h2 class="section-title">App</h2>
+    <div class="settings-list">
+      <div class="settings-row">
+        <span class="settings-label"><span>Als App installieren
+          <small id="install-note">Prüfe …</small>
+        </span></span>
+        <button class="btn btn-accent" id="install-btn" type="button" hidden>Installieren</button>
+      </div>
+    </div>
   </section>
 </main>
 
-<nav class="bottom-nav">
-  <a href="index.html" class="nav-item"><span class="nav-icon">📋</span>Ereignisse</a>
-  <a href="karte.html" class="nav-item"><span class="nav-icon">🗺️</span>Komitate</a>
-  <a href="einstellungen.html" class="nav-item active"><span class="nav-icon">⚙️</span>Einstellungen</a>
-  <a href="info.html" class="nav-item"><span class="nav-icon">ℹ️</span>Info</a>
-</nav>
-
 <footer class="app-footer">
   <p>Quelle: <a href="https://www.katasztrofavedelem.hu" target="_blank" rel="noopener">BM Országos Katasztrófavédelmi Főigazgatóság</a></p>
-  <p>Übersetzung: <a href="https://melovistastudio.com" target="_blank" rel="noopener" class="footer-brand"><img src="assets/images/melovista-logo.png" alt="Melovista Studio" class="footer-logo">Melovista Studio</a></p>
-  <p><a href="https://melovistastudio.com/impressum.html" target="_blank" rel="noopener">Impressum</a></p>
+  <p>Übersetzung: <a href="https://melovistastudio.com" target="_blank" rel="noopener" class="footer-brand"><img src="/assets/images/melovista-logo.png" alt="" class="footer-logo" width="32" height="32"><span>Melovista Studio</span></a></p>
+  <p><a href="/impressum">Impressum</a> · <a href="/datenschutz">Datenschutz</a></p>
 </footer>
 
-<script src="js/einstellungen.js"></script>
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
-    });
-  }
-</script>
+<nav class="app-nav" aria-label="Hauptnavigation">
+  <img class="rail-logo" src="/assets/icons/icon-192.png" alt="" width="48" height="48">
+  <a class="nav-item" href="/">
+    <span class="ic"><svg class="i" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-list"/></svg></span><span>Ereignisse</span>
+  </a>
+  <a class="nav-item" href="/karte">
+    <span class="ic"><svg class="i" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-map"/></svg></span><span>Komitate</span>
+  </a>
+  <a class="nav-item" href="/einstellungen" aria-current="page">
+    <span class="ic"><svg class="i" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-sliders"/></svg></span><span>Einstellungen</span>
+  </a>
+  <a class="nav-item" href="/info">
+    <span class="ic"><svg class="i" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-info"/></svg></span><span>Info</span>
+  </a>
+</nav>
+
+<script src="/js/pwa.js" defer></script>
+<script src="/js/einstellungen.js" defer></script>
 </body>
 </html>

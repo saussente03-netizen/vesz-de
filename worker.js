@@ -3212,34 +3212,82 @@ export default {
     // "run_worker_first" in wrangler.jsonc jetzt IMMER zuerst, kann also
     // die Antwort noch um das Set-Cookie-Headerfeld ergänzen, bevor sie
     // rausgeht.
-    if (url.pathname === "/" || url.pathname.endsWith(".html")) {
+    //
+    // 🆕 15.10.: Die Seiten haben jetzt saubere Adressen (/karte, /info, …,
+    // Cloudflare liefert karte.html unter /karte aus und leitet /karte.html
+    // dorthin um) - isPageRequest() kennt sie. Außerdem zählen nur echte
+    // Seitenaufrufe: Hintergrund-Abrufe des Service Workers (Sec-Fetch-Dest
+    // "empty") lösen keine Zählung aus.
+    if (isPageRequest(request, url)) {
       const cookieHeader = request.headers.get("Cookie") || "";
       const alreadyCountedToday = cookieHeader
         .split(";")
         .some((c) => c.trim() === "vesz_seen=1");
 
       const assetResponse = await env.ASSETS.fetch(request);
+      const response = withAssetHeaders(assetResponse, url);
 
       if (!alreadyCountedToday) {
         ctx.waitUntil(recordPageview(env));
-        const responseWithCookie = new Response(assetResponse.body, assetResponse);
-        responseWithCookie.headers.append(
+        response.headers.append(
           "Set-Cookie",
           "vesz_seen=1; Max-Age=86400; Path=/; SameSite=Lax; Secure"
         );
-        return responseWithCookie;
       }
 
-      return assetResponse;
+      return response;
     }
 
-    return env.ASSETS.fetch(request);
+    return withAssetHeaders(await env.ASSETS.fetch(request), url);
   },
 
   async scheduled(event, env, ctx) {
     ctx.waitUntil(updateEvents(env));
   }
 };
+
+// ------------------------------------------------------------
+// Seiten, Header und Web-App-Dateien (🆕 15.10.)
+// ------------------------------------------------------------
+// Adressen der Seiten (ohne .html, so liefert Cloudflare sie aus)
+const PAGE_PATHS = new Set(["/", "/karte", "/einstellungen", "/info", "/impressum", "/datenschutz"]);
+
+// Ein "echter" Seitenaufruf: GET auf eine Seite, vom Browser als Dokument angefordert.
+// Browser senden Sec-Fetch-Dest; fehlt der Header (Bots, ältere Browser), zählt der Aufruf wie bisher.
+function isPageRequest(request, url) {
+  if (request.method !== "GET") return false;
+  if (!PAGE_PATHS.has(url.pathname) && !url.pathname.endsWith(".html")) return false;
+  const dest = request.headers.get("Sec-Fetch-Dest");
+  return !dest || dest === "document";
+}
+
+// Strenge Inhaltsrichtlinie: alles nur von der eigenen Adresse, keine Inline-Skripte, keine Inline-Stile.
+// Die Seiten laden nichts von fremden Servern (Schriften sind lokal gehostet).
+const CSP =
+  "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; " +
+  "font-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; " +
+  "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
+
+// Ergänzt Antworten aus den statischen Dateien um die nötigen Header:
+// - sw.js: nie lange zwischenspeichern, damit Updates des Service Workers ankommen
+// - manifest.webmanifest: eigener Content-Type
+// - HTML-Seiten: CSP und ein paar Standard-Schutzheader
+function withAssetHeaders(response, url) {
+  const res = new Response(response.body, response); // Kopie mit veränderbaren Headern
+  if (url.pathname === "/sw.js") {
+    res.headers.set("Cache-Control", "no-cache");
+    res.headers.set("Service-Worker-Allowed", "/");
+  } else if (url.pathname === "/manifest.webmanifest") {
+    res.headers.set("Content-Type", "application/manifest+json; charset=utf-8");
+  }
+  const contentType = res.headers.get("Content-Type") || "";
+  if (contentType.startsWith("text/html")) {
+    res.headers.set("Content-Security-Policy", CSP);
+    res.headers.set("X-Content-Type-Options", "nosniff");
+    res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  }
+  return res;
+}
 
 // ------------------------------------------------------------
 // Seitenaufrufe-Zähler (für Melovista-Admin-Dashboard)

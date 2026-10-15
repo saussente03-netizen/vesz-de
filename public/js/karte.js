@@ -13,11 +13,19 @@ async function loadCounties() {
     const res = await fetch(API_URL, { cache: 'no-store' });
     if (!res.ok) throw new Error('Serverfehler ' + res.status);
     const events = await res.json();
+    if (!Array.isArray(events)) throw new Error('Unerwartete Antwort vom Server');
     renderCounties(events);
     loading.hidden = true;
   } catch (e) {
     console.error(e);
-    loading.textContent = 'Fehler beim Laden. Bitte später erneut versuchen.';
+    loading.className = 'state err';
+    loading.textContent = '';
+    const h = document.createElement('h3');
+    h.textContent = 'Komitate konnten nicht geladen werden';
+    const p = document.createElement('p');
+    p.textContent = 'Wahrscheinlich ist gerade keine Internetverbindung da oder der Server antwortet nicht. ' +
+      'Lade die Seite später noch einmal.';
+    loading.append(h, p);
   }
 }
 
@@ -37,7 +45,7 @@ function renderCounties(events) {
   for (const county of COUNTIES) {
     const count = counts[county];
     const tile = document.createElement('a');
-    tile.href = `index.html?county=${encodeURIComponent(county)}`;
+    tile.href = `/?county=${encodeURIComponent(county)}`;
     tile.className = 'county-tile' + (count > 0 ? ' has-events' : '');
     tile.innerHTML = `
       <span class="county-name">${escapeHtml(county)}</span>
@@ -49,11 +57,12 @@ function renderCounties(events) {
 
 function escapeHtml(str) {
   if (!str) return '';
-  return str
+  return String(str)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 loadCounties();

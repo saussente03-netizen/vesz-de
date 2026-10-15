@@ -2,83 +2,96 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>VÉSZ · Deutsch</title>
-<link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0b0f1f">
+<meta name="color-scheme" content="dark">
+<meta name="application-name" content="VÉSZ">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="VÉSZ">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta property="og:type" content="website">
 <meta property="og:title" content="VÉSZ · Deutsch">
 <meta property="og:description" content="Ungarische Notfall- und Katastrophenschutzmeldungen (VÉSZ), automatisch auf Deutsch übersetzt – kostenlos, für alle, die ungarische Notfallinformationen auf Deutsch lesen möchten.">
-<meta property="og:image" content="https://vesz.melovistastudio.com/assets/images/icon-512.png">
+<meta property="og:image" content="https://vesz.melovistastudio.com/assets/icons/icon-512.png">
 <meta property="og:url" content="https://vesz.melovistastudio.com">
 <meta property="og:locale" content="de_DE">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="VÉSZ · Deutsch">
 <meta name="twitter:description" content="Ungarische Notfall- und Katastrophenschutzmeldungen, automatisch auf Deutsch übersetzt.">
-<meta name="twitter:image" content="https://vesz.melovistastudio.com/assets/images/icon-512.png">
-<link rel="icon" href="assets/images/favicon-32.png" sizes="32x32">
-<link rel="icon" href="assets/images/favicon-16.png" sizes="16x16">
-<link rel="apple-touch-icon" href="assets/images/apple-touch-icon.png">
-<link rel="stylesheet" href="css/fonts.css">
-<link rel="stylesheet" href="css/style.css">
+<meta name="twitter:image" content="https://vesz.melovistastudio.com/assets/icons/icon-512.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/assets/icons/favicon-16.png">
+<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+<link rel="stylesheet" href="/css/fonts.css">
+<link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-
 <header class="app-header">
-  <h1>VÉSZ <span class="accent">· Deutsch</span></h1>
-  <button id="refresh-btn" class="icon-btn" aria-label="Aktualisieren">⟳</button>
+  <div class="brand">
+    <h1>VÉSZ <span class="accent">· Deutsch</span></h1>
+    <p class="sub" id="sub">Lade …</p>
+  </div>
+  <button id="refresh-btn" class="icon-btn" type="button" aria-label="Aktualisieren" title="Aktualisieren">
+    <svg class="i" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-refresh"/></svg>
+  </button>
 </header>
 
-<div id="county-filter-banner" class="filter-banner" hidden>
-  <span class="filter-text"></span>
-  <a href="index.html" class="filter-clear">✕ Filter entfernen</a>
-</div>
-
 <main>
+  <div id="county-filter-banner" class="filter-banner" hidden>
+    <span class="filter-text"></span>
+    <a href="/" class="filter-clear">✕ Filter entfernen</a>
+  </div>
+
   <section id="active-section">
     <h2 class="section-title">Aktive Ereignisse</h2>
     <div id="active-list" class="event-list"></div>
-    <p id="active-empty" class="empty-state" hidden>Keine aktiven Ereignisse.</p>
+    <p id="active-empty" class="state" hidden>Keine aktiven Ereignisse.</p>
   </section>
 
   <section id="archive-section">
     <h2 class="section-title">Archiv</h2>
     <div id="archive-list" class="event-list"></div>
-    <p id="archive-empty" class="empty-state" hidden>Keine archivierten Ereignisse.</p>
+    <p id="archive-empty" class="state" hidden>Keine archivierten Ereignisse.</p>
   </section>
 
-  <p id="loading" class="loading-state">Lade Ereignisse…</p>
+  <div id="loading" class="state" role="status">Lade Ereignisse…</div>
 </main>
-
-<nav class="bottom-nav">
-  <a href="index.html" class="nav-item active"><span class="nav-icon">📋</span>Ereignisse</a>
-  <a href="karte.html" class="nav-item"><span class="nav-icon">🗺️</span>Komitate</a>
-  <a href="einstellungen.html" class="nav-item"><span class="nav-icon">⚙️</span>Einstellungen</a>
-  <a href="info.html" class="nav-item"><span class="nav-icon">ℹ️</span>Info</a>
-</nav>
 
 <footer class="app-footer">
   <p>Quelle: <a href="https://www.katasztrofavedelem.hu" target="_blank" rel="noopener">BM Országos Katasztrófavédelmi Főigazgatóság</a></p>
-  <p>Übersetzung: <a href="https://melovistastudio.com" target="_blank" rel="noopener" class="footer-brand"><img src="assets/images/melovista-logo.png" alt="Melovista Studio" class="footer-logo">Melovista Studio</a></p>
-  <p><a href="https://melovistastudio.com/impressum.html" target="_blank" rel="noopener">Impressum</a></p>
+  <p>Übersetzung: <a href="https://melovistastudio.com" target="_blank" rel="noopener" class="footer-brand"><img src="/assets/images/melovista-logo.png" alt="" class="footer-logo" width="32" height="32"><span>Melovista Studio</span></a></p>
+  <p><a href="/impressum">Impressum</a> · <a href="/datenschutz">Datenschutz</a></p>
 </footer>
 
 <div id="detail-overlay" class="detail-overlay" hidden>
-  <div class="detail-card">
-    <button id="detail-close" class="icon-btn detail-close" aria-label="Schließen">✕</button>
+  <div id="detail-card" class="detail-card" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+    <button id="detail-close" class="icon-btn detail-close" type="button" aria-label="Schließen">
+      <svg class="i" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-close"/></svg>
+    </button>
     <div id="detail-content"></div>
   </div>
 </div>
 
-<script src="js/app.js"></script>
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').catch((err) => {
-        console.error('VÉSZ: Service Worker konnte nicht registriert werden:', err);
-      });
-    });
-  }
-</script>
+<nav class="app-nav" aria-label="Hauptnavigation">
+  <img class="rail-logo" src="/assets/icons/icon-192.png" alt="" width="48" height="48">
+  <a class="nav-item" href="/" aria-current="page">
+    <span class="ic"><svg class="i" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-list"/></svg></span><span>Ereignisse</span>
+  </a>
+  <a class="nav-item" href="/karte">
+    <span class="ic"><svg class="i" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-map"/></svg></span><span>Komitate</span>
+  </a>
+  <a class="nav-item" href="/einstellungen">
+    <span class="ic"><svg class="i" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-sliders"/></svg></span><span>Einstellungen</span>
+  </a>
+  <a class="nav-item" href="/info">
+    <span class="ic"><svg class="i" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-info"/></svg></span><span>Info</span>
+  </a>
+</nav>
+
+<script src="/js/pwa.js" defer></script>
+<script src="/js/app.js" defer></script>
 </body>
 </html>

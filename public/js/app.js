@@ -1,6 +1,10 @@
 const API_URL = '/api/events';
 const SETTINGS_KEY = 'vesz-settings';
 const DEFAULT_SETTINGS = { unfall: true, feuer: true, wetter: true, sonstiges: true };
+const TIME_ZONE = 'Europe/Budapest'; // Ereignisse sind in ungarischer Ortszeit, unabhängig vom Standort des Geräts
+const SPRITE = '/assets/icons/sprite.svg';
+
+const $ = (id) => document.getElementById(id);
 
 function loadSettings() {
   try {
@@ -17,7 +21,7 @@ function getCountyFilter() {
 }
 
 function updateFilterBanner(countyFilter) {
-  const banner = document.getElementById('county-filter-banner');
+  const banner = $('county-filter-banner');
   if (!banner) return;
   if (countyFilter) {
     banner.hidden = false;
@@ -34,20 +38,90 @@ const categoryMeta = {
   sonstiges: { label: 'Sonstiges',       icon: '⚠️',  className: 'cat-sonstiges' }
 };
 
+let hasData = false;      // schon einmal erfolgreich geladen? (dann bleibt bei einem Fehler die alte Liste stehen)
+let isLoading = false;
+let lastLoadAt = 0;
+
+function setSub(parts) {
+  const sub = $('sub');
+  if (!sub) return;
+  sub.textContent = '';
+  parts.forEach((p, i) => {
+    if (i > 0) sub.appendChild(document.createTextNode(' · '));
+    if (typeof p === 'string') {
+      sub.appendChild(document.createTextNode(p));
+    } else {
+      const span = document.createElement('span');
+      span.className = p.className;
+      span.textContent = p.text;
+      sub.appendChild(span);
+    }
+  });
+}
+
+function formatClock(date) {
+  return date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', timeZone: TIME_ZONE }) + ' Uhr';
+}
+
+function showError(err) {
+  const box = $('loading');
+  box.className = 'state err';
+  box.hidden = false;
+  box.textContent = '';
+  const h = document.createElement('h3');
+  h.textContent = 'Ereignisse konnten nicht geladen werden';
+  const p1 = document.createElement('p');
+  p1.textContent = 'Wahrscheinlich ist gerade keine Internetverbindung da oder der Server antwortet nicht. ' +
+    'Tippe oben auf „Aktualisieren“, um es erneut zu versuchen.';
+  const p2 = document.createElement('p');
+  p2.textContent = 'Technische Meldung: ' + (err && err.message ? err.message : String(err));
+  box.append(h, p1, p2);
+}
+
 async function loadEvents() {
-  const loading = document.getElementById('loading');
-  loading.hidden = false;
-  loading.textContent = 'Lade Ereignisse…';
+  if (isLoading) return;
+  isLoading = true;
+  const box = $('loading');
+  const btn = $('refresh-btn');
+  btn.classList.add('spin');
+  if (!hasData) {
+    box.className = 'state';
+    box.hidden = false;
+    box.textContent = 'Lade Ereignisse…';
+  }
 
   try {
     const res = await fetch(API_URL, { cache: 'no-store' });
     if (!res.ok) throw new Error('Serverfehler ' + res.status);
     const events = await res.json();
-    renderEvents(events);
-    loading.hidden = true;
+    if (!Array.isArray(events)) throw new Error('Unerwartete Antwort vom Server');
+
+    const activeCount = renderEvents(events);
+    hasData = true;
+    lastLoadAt = Date.now();
+    box.hidden = true;
+
+    if (res.headers.get('X-VESZ-Cache') === 'offline') {
+      const stamp = new Date(res.headers.get('date') || '');
+      setSub([
+        { className: 'off', text: 'Offline' },
+        isNaN(stamp.getTime()) ? 'zuletzt geladene Meldungen' : 'Stand ' + formatClock(stamp)
+      ]);
+    } else {
+      setSub(['Stand ' + formatClock(new Date()), activeCount === 1 ? '1 aktiv' : activeCount + ' aktiv']);
+    }
   } catch (e) {
     console.error(e);
-    loading.textContent = 'Fehler: ' + (e && e.message ? e.message : String(e));
+    if (hasData) {
+      // Liste bleibt stehen, nur der Hinweis oben ändert sich
+      setSub([{ className: 'off', text: 'Aktualisierung fehlgeschlagen' }, 'letzter Stand bleibt sichtbar']);
+    } else {
+      showError(e);
+      setSub([{ className: 'off', text: 'Keine Daten' }]);
+    }
+  } finally {
+    btn.classList.remove('spin');
+    isLoading = false;
   }
 }
 
@@ -66,6 +140,7 @@ function renderEvents(events) {
   renderList('active-list', 'active-empty', active);
   renderList('archive-list', 'archive-empty', archive);
   updateFilterBanner(countyFilter);
+  return active.length;
 }
 
 function byDateDesc(a, b) {
@@ -73,8 +148,8 @@ function byDateDesc(a, b) {
 }
 
 function renderList(listId, emptyId, items) {
-  const list = document.getElementById(listId);
-  const empty = document.getElementById(emptyId);
+  const list = $(listId);
+  const empty = $(emptyId);
   list.innerHTML = '';
 
   if (items.length === 0) {
@@ -99,7 +174,7 @@ function buildCard(item) {
     <div class="event-icon" aria-hidden="true">${meta.icon}</div>
     <div class="event-body">
       <div class="event-meta">
-        <span class="event-category">${meta.label}</span>
+        <span class="badge">${meta.label}</span>
         <span class="event-county">${escapeHtml(item.county)}</span>
       </div>
       <time class="event-date">${formatDate(item.pubDate)}</time>
@@ -125,10 +200,24 @@ function truncate(text, maxLen) {
   return text.slice(0, maxLen).trim() + '…';
 }
 
+// Nur echte Web-Adressen als Link zulassen (kein javascript: o. Ä.)
+function safeUrl(u) {
+  try {
+    const url = new URL(u);
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.href : '';
+  } catch (e) {
+    return '';
+  }
+}
+
+let lastFocused = null;
+
 function openDetail(item) {
   const meta = categoryMeta[item.category] || categoryMeta.sonstiges;
-  const content = document.getElementById('detail-content');
-  content.innerHTML = `
+  const link = safeUrl(item.link);
+  const card = $('detail-card');
+  card.className = `detail-card ${meta.className}`;
+  $('detail-content').innerHTML = `
     <div class="detail-badge-row">
       <span class="detail-icon" aria-hidden="true">${meta.icon}</span>
       <div>
@@ -137,16 +226,20 @@ function openDetail(item) {
       </div>
     </div>
     <time class="detail-date">${formatDate(item.pubDate)}</time>
-    <h2 class="detail-title">${escapeHtml(item.title_de)}</h2>
+    <h2 class="detail-title" id="detail-title">${escapeHtml(item.title_de)}</h2>
     <p class="detail-desc">${escapeHtml(item.description_de)}</p>
     <p class="detail-note">Genaue Kartenposition liegt in den Ausgangsdaten nicht vor.</p>
-    <a class="detail-link" href="${item.link}" target="_blank" rel="noopener">Original auf katasztrofavedelem.hu ansehen ↗</a>
+    ${link ? `<a class="detail-link" href="${escapeHtml(link)}" target="_blank" rel="noopener">Original auf katasztrofavedelem.hu ansehen <svg class="i" aria-hidden="true"><use href="${SPRITE}#i-external"/></svg></a>` : ''}
   `;
-  document.getElementById('detail-overlay').hidden = false;
+  lastFocused = document.activeElement;
+  $('detail-overlay').hidden = false;
+  $('detail-close').focus();
 }
 
 function closeDetail() {
-  document.getElementById('detail-overlay').hidden = true;
+  $('detail-overlay').hidden = true;
+  if (lastFocused && typeof lastFocused.focus === 'function') lastFocused.focus();
+  lastFocused = null;
 }
 
 function formatDate(pubDate) {
@@ -154,29 +247,36 @@ function formatDate(pubDate) {
   if (isNaN(d.getTime())) return '';
   return d.toLocaleString('de-DE', {
     day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit'
+    hour: '2-digit', minute: '2-digit',
+    timeZone: TIME_ZONE
   });
 }
 
 function escapeHtml(str) {
   if (!str) return '';
-  return str
+  return String(str)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
-document.getElementById('refresh-btn').addEventListener('click', loadEvents);
+$('refresh-btn').addEventListener('click', loadEvents);
 
-document.getElementById('detail-close').addEventListener('click', closeDetail);
-document.getElementById('detail-overlay').addEventListener('click', (e) => {
+$('detail-close').addEventListener('click', closeDetail);
+$('detail-overlay').addEventListener('click', (e) => {
   if (e.target.id === 'detail-overlay') closeDetail();
 });
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !$('detail-overlay').hidden) closeDetail();
+});
 
-document.querySelectorAll('.nav-item.disabled').forEach(el => {
-  el.addEventListener('click', (e) => e.preventDefault());
+// Wieder online: sofort neu laden. Zurück im Vordergrund nach längerer Pause: ebenfalls.
+window.addEventListener('online', loadEvents);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && Date.now() - lastLoadAt > 60 * 1000) loadEvents();
 });
 
 loadEvents();
-setInterval(loadEvents, 3 * 60 * 1000); // Auto-Refresh alle 3 Minuten
+setInterval(() => { if (!document.hidden) loadEvents(); }, 3 * 60 * 1000); // Auto-Refresh alle 3 Minuten
